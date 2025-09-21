@@ -6,6 +6,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface CategoryFormProps {
   onClose: () => void
@@ -13,6 +14,7 @@ interface CategoryFormProps {
     id: string
     name: string
     color: string
+    type?: string
   }
 }
 
@@ -20,6 +22,7 @@ export function CategoryForm({ onClose, category }: CategoryFormProps) {
   const [formData, setFormData] = useState({
     name: category?.name || "",
     color: category?.color || "#0891b2",
+    typeDescription: category?.type || "EXPENSE",
   })
 
   const predefinedColors = [
@@ -56,7 +59,6 @@ export function CategoryForm({ onClose, category }: CategoryFormProps) {
 
       if (response.ok) {
         onClose()
-        window.location.reload()
       }
     } catch (error) {
       console.error("Error saving category:", error)
@@ -65,7 +67,7 @@ export function CategoryForm({ onClose, category }: CategoryFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Name */}
         <div className="space-y-2">
           <Label htmlFor="name">Nombre de la Categoría</Label>
@@ -73,9 +75,41 @@ export function CategoryForm({ onClose, category }: CategoryFormProps) {
             id="name"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            placeholder="Ej: COMIDAS, TRANSPORTE, etc."
+            placeholder={
+              formData.typeDescription === "INCOME" 
+                ? "Ej: SALARIO, FREELANCE, VENTAS, etc." 
+                : "Ej: COMIDAS, TRANSPORTE, etc."
+            }
             required
           />
+        </div>
+
+        {/* Type */}
+        <div className="space-y-2">
+          <Label htmlFor="type">Tipo de Categoría</Label>
+          <Select 
+            value={formData.typeDescription} 
+            onValueChange={(value) => setFormData({ ...formData, typeDescription: value })}
+            disabled={!!category} // Deshabilitar si estamos editando una categoría existente
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Selecciona el tipo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="EXPENSE">
+                <div className="flex items-center gap-2">
+                  <span className="text-red-600">💸</span>
+                  <span>Gasto</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="INCOME">
+                <div className="flex items-center gap-2">
+                  <span className="text-green-600">💰</span>
+                  <span>Ingreso</span>
+                </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Color Picker */}
@@ -101,6 +135,21 @@ export function CategoryForm({ onClose, category }: CategoryFormProps) {
             onChange={(e) => setFormData({ ...formData, color: e.target.value })}
             className="w-full h-10"
           />
+        </div>
+      </div>
+
+      {/* Helper Text */}
+      <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4 border">
+        <div className="text-sm text-slate-600 dark:text-slate-400">
+          <strong className="text-slate-900 dark:text-slate-100">
+            {formData.typeDescription === "INCOME" ? "💰 Categoría de Ingreso" : "💸 Categoría de Gasto"}
+          </strong>
+          <p className="mt-1">
+            {formData.typeDescription === "INCOME" 
+              ? "Las categorías de ingreso se usan para clasificar el dinero que recibes (salarios, ventas, freelance, etc.)"
+              : "Las categorías de gasto se usan para clasificar en qué gastas tu dinero (comida, transporte, entretenimiento, etc.)"
+            }
+          </p>
         </div>
       </div>
 

@@ -8,7 +8,14 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     // Get transaction details before deletion
     const transaction = await prisma.transaction.findUnique({
       where: { id },
-      include: { account: true },
+      include: { 
+        account: true,
+        category: {
+          include: {
+            type: true
+          }
+        }
+      },
     })
 
     if (!transaction) {
@@ -21,15 +28,18 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     })
 
     // Update account balance (reverse the transaction)
-    const balanceChange = transaction.type === "INCOME" ? -transaction.amount : transaction.amount
-    await prisma.account.update({
-      where: { id: transaction.accountId },
-      data: {
-        balance: {
-          increment: balanceChange,
+    const isIncome = transaction.category?.type?.description === "INCOME"
+    const balanceChange = isIncome ? -transaction.amount : transaction.amount
+    if (transaction.accountId) {
+      await prisma.account.update({
+        where: { id: transaction.accountId },
+        data: {
+          balance: {
+            increment: balanceChange,
+          },
         },
-      },
-    })
+      })
+    }
 
     return NextResponse.json({ message: "Transaction deleted successfully" })
   } catch (error) {

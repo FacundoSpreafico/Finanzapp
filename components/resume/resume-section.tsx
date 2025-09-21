@@ -3,8 +3,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { useState } from "react"
-import { NewTransactionDialog } from "./new-transaction-dialog"
+import { useState, useEffect } from "react"
+import { NewTransactionDialog } from "@/components/resume/new-transaction-dialog"
+import type { DashboardSummaryResponse, TransaccionReciente, CategoriaResumen } from "@/lib/models/dashboard"
+import { getCategoryIcon } from "@/lib/category-helpers"
 
 const TrendingUp = () => (
   <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -148,57 +150,89 @@ const Building = () => (
 
 export function ModernFinanceDashboard() {
   const [isNewTransactionOpen, setIsNewTransactionOpen] = useState(false)
+  const [dashboardData, setDashboardData] = useState<DashboardSummaryResponse | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Mock data basado en tu ejemplo
-  const balanceData = {
-    mercadoPago: 3648,
-    efectivo: 0,
-    ahorro: 3648,
-    saldoInicial: 749,
-    saldoRestante: 28625,
-    totalPlata: 29374,
+  // Fetch dashboard data from API
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      const response = await fetch('/api/balance/summary')
+      if (!response.ok) {
+        throw new Error('Error al obtener datos del dashboard')
+      }
+      
+      const data: DashboardSummaryResponse = await response.json()
+      setDashboardData(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido')
+      console.error('Error fetching dashboard data:', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const totales = {
-    ingresos: {
-      mercadoPago: 697380,
-      efectivo: 40000,
-      total: 737380,
-    },
-    gastos: {
-      mercadoPago: 700279.01,
-      efectivo: 11375,
-      total: 711654.01,
-    },
+  useEffect(() => {
+    fetchDashboardData()
+  }, [])
+
+  // Refetch data when new transaction dialog closes
+  const handleTransactionDialogChange = (open: boolean) => {
+    setIsNewTransactionOpen(open)
+    if (!open) {
+      // Refetch data after a short delay to ensure transaction is processed
+      setTimeout(() => {
+        fetchDashboardData()
+      }, 500)
+    }
   }
 
-  const categorias = [
-    { nombre: "NAFTA", monto: 40000, color: "bg-orange-500", icon: Car, textColor: "text-orange-600" },
-    { nombre: "SALIDAS", monto: 148795, color: "bg-purple-500", icon: Plane, textColor: "text-purple-600" },
-    { nombre: "COMIDAS", monto: 21230, color: "bg-amber-500", icon: Coffee, textColor: "text-amber-600" },
-    { nombre: "SEOM", monto: 9000, color: "bg-blue-500", icon: Heart, textColor: "text-blue-600" },
-    { nombre: "COMPRAS", monto: 32600, color: "bg-green-500", icon: ShoppingCart, textColor: "text-green-600" },
-    { nombre: "TARJETA", monto: 114359, color: "bg-red-500", icon: CreditCard, textColor: "text-red-600" },
-    { nombre: "IMPUESTO", monto: 75670, color: "bg-gray-500", icon: Receipt, textColor: "text-gray-600" },
-    { nombre: "CIUDADANIA", monto: 70000, color: "bg-indigo-500", icon: Building, textColor: "text-indigo-600" },
-    { nombre: "AHORRO", monto: 200000, color: "bg-emerald-500", icon: PiggyBank, textColor: "text-emerald-600" },
-  ]
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800 p-4 md:p-6 lg:p-8">
+        <div className="mx-auto max-w-7xl">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-slate-600 dark:text-slate-300">Cargando resumen financiero...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
-  const ingresos = [
-    { fecha: "15/9", descripcion: "Rendimientos MP", monto: 5, medio: "MERC PAGO", tipo: "rendimiento" },
-    { fecha: "14/9", descripcion: "Trabajo MP", monto: 680000, medio: "MERC PAGO", tipo: "salario" },
-    { fecha: "13/9", descripcion: "Efectivo", monto: 40000, medio: "EFECTIVO", tipo: "efectivo" },
-    { fecha: "12/9", descripcion: "Marcela seom", monto: 10000, medio: "MERC PAGO", tipo: "transferencia" },
-    { fecha: "11/9", descripcion: "Catre", monto: 1000, medio: "MERC PAGO", tipo: "venta" },
-  ]
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800 p-4 md:p-6 lg:p-8">
+        <div className="mx-auto max-w-7xl">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="text-red-500 mb-4">⚠️</div>
+              <p className="text-red-600 dark:text-red-400">Error: {error}</p>
+              <Button 
+                onClick={fetchDashboardData} 
+                className="mt-4"
+                variant="outline"
+              >
+                Reintentar
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
-  const gastos = [
-    { fecha: "16/9", categoria: "COMPRAS", descripcion: "Coca", monto: 5000, medio: "EFECTIVO" },
-    { fecha: "16/9", categoria: "SEOM", descripcion: "SEOM", monto: 3000, medio: "MERC PAGO" },
-    { fecha: "15/9", categoria: "SALIDAS", descripcion: "Nafta viaje", monto: 27875, medio: "MERC PAGO" },
-    { fecha: "13/9", categoria: "AHORRO", descripcion: "Ahorro", monto: 200000, medio: "MERC PAGO" },
-    { fecha: "13/9", categoria: "SALIDAS", descripcion: "Cordoba", monto: 31800, medio: "MERC PAGO" },
-  ]
+  if (!dashboardData) {
+    return null
+  }
+
+  // Extract data from API response
+  const { accounts, balanceData, balanceCards, transaccionesRecientes, categorias } = dashboardData
 
   const getIncomeBadgeColor = (tipo: string) => {
     switch (tipo) {
@@ -237,55 +271,42 @@ export function ModernFinanceDashboard() {
           </div>
         </div>
 
-        {/* Balance Overview */}
+        {/* Balance Overview - Dynamic Accounts */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          {/* Balance Total Card */}
           <Card className="border-0 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 text-white shadow-xl hover:shadow-2xl transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium opacity-90">Saldo restante</CardTitle>
+              <CardTitle className="text-sm font-medium opacity-90">Balance Total</CardTitle>
               <Wallet />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">${balanceData.saldoRestante.toLocaleString()}</div>
+              <div className="text-3xl font-bold">${balanceData.saldoTotal.toLocaleString()}</div>
               <p className="text-xs opacity-90">Total disponible</p>
             </CardContent>
           </Card>
 
-          <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 bg-white dark:bg-slate-800 dark:border-slate-700">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-300">Mercado Pago</CardTitle>
-              <CreditCard />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                ${balanceData.mercadoPago.toLocaleString()}
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Saldo digital</p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 bg-white dark:bg-slate-800 dark:border-slate-700">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-300">Efectivo</CardTitle>
-              <Wallet />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-green-600 dark:text-green-400">
-                ${balanceData.efectivo.toLocaleString()}
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Dinero físico</p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 bg-gradient-to-br from-emerald-500 to-teal-600 text-white">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium opacity-90">Ahorro</CardTitle>
-              <PiggyBank />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">${balanceData.ahorro.toLocaleString()}</div>
-              <p className="text-xs opacity-90">Reservas</p>
-            </CardContent>
-          </Card>
+          {/* Dynamic Account Cards */}
+          {accounts.map((account, index) => {
+            const isPositive = account.balance >= 0
+            const colorClass = isPositive ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+            
+            return (
+              <Card key={account.id} className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 bg-white dark:bg-slate-800 dark:border-slate-700">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-300">{account.type}</CardTitle>
+                  <Wallet />
+                </CardHeader>
+                <CardContent>
+                  <div className={`text-3xl font-bold ${colorClass}`}>
+                    ${account.balance.toLocaleString()}
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Ingresos: ${account.ingresos.toLocaleString()} | Gastos: ${account.gastos.toLocaleString()}
+                  </p>
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
 
         {/* Income vs Expenses */}
@@ -294,26 +315,22 @@ export function ModernFinanceDashboard() {
             <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-t-lg">
               <CardTitle className="flex items-center gap-2 text-xl text-green-700 dark:text-green-400">
                 <ArrowUpRight />
-                Total Ingresos
+                Total ingresos
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 pt-6">
               <div className="text-4xl font-bold text-green-600 dark:text-green-400">
-                ${totales.ingresos.total.toLocaleString()}
+                ${balanceData.totalIngresos.toLocaleString()}
               </div>
               <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                  <span className="text-sm font-medium text-green-700 dark:text-green-400">Mercado Pago</span>
-                  <span className="font-bold text-green-600 dark:text-green-400">
-                    ${totales.ingresos.mercadoPago.toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                  <span className="text-sm font-medium text-green-700 dark:text-green-400">Efectivo</span>
-                  <span className="font-bold text-green-600 dark:text-green-400">
-                    ${totales.ingresos.efectivo.toLocaleString()}
-                  </span>
-                </div>
+                {accounts.map((account) => (
+                  <div key={`income-${account.id}`} className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                    <span className="text-sm font-medium text-green-700 dark:text-green-400">{account.type}</span>
+                    <span className="font-bold text-green-600 dark:text-green-400">
+                      ${account.ingresos.toLocaleString()}
+                    </span>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -322,45 +339,39 @@ export function ModernFinanceDashboard() {
             <CardHeader className="bg-gradient-to-r from-red-50 to-rose-50 dark:from-red-900/20 dark:to-rose-900/20 rounded-t-lg">
               <CardTitle className="flex items-center gap-2 text-xl text-red-700 dark:text-red-400">
                 <TrendingDown />
-                Total Gastos
+                Total gastos
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 pt-6">
               <div className="text-4xl font-bold text-red-600 dark:text-red-400">
-                ${totales.gastos.total.toLocaleString()}
+                ${balanceData.totalGastos.toLocaleString()}
               </div>
               <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                  <span className="text-sm font-medium text-red-700 dark:text-red-400">Mercado Pago</span>
-                  <span className="font-bold text-red-600 dark:text-red-400">
-                    ${totales.gastos.mercadoPago.toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                  <span className="text-sm font-medium text-red-700 dark:text-red-400">Efectivo</span>
-                  <span className="font-bold text-red-600 dark:text-red-400">
-                    ${totales.gastos.efectivo.toLocaleString()}
-                  </span>
-                </div>
+                {accounts.map((account) => (
+                  <div key={`expense-${account.id}`} className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                    <span className="text-sm font-medium text-red-700 dark:text-red-400">{account.type}</span>
+                    <span className="font-bold text-red-600 dark:text-red-400">
+                      ${account.gastos.toLocaleString()}
+                    </span>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
         </div>
-
-        {/* Categories and Transactions */}
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Categories */}
           <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 lg:col-span-1 bg-white dark:bg-slate-800 dark:border-slate-700">
             <CardHeader className="bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-700 dark:to-slate-600 rounded-t-lg">
-              <CardTitle className="text-xl text-slate-700 dark:text-slate-200">Total por Categoría</CardTitle>
+              <CardTitle className="text-xl text-slate-700 dark:text-slate-200">Total gasto por categoría</CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
               <div className="space-y-4">
                 {categorias.map((categoria, index) => {
-                  const IconComponent = categoria.icon
+                  const IconComponent = getCategoryIcon(categoria.nombre)
                   return (
                     <div
-                      key={index}
+                      key={categoria.id}
                       className="flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
                     >
                       <div className="flex items-center gap-3">
@@ -393,7 +404,7 @@ export function ModernFinanceDashboard() {
               </CardHeader>
               <CardContent className="pt-6">
                 <div className="space-y-3">
-                  {ingresos.map((ingreso, index) => (
+                  {transaccionesRecientes.ingresos.map((ingreso, index) => (
                     <div
                       key={index}
                       className="flex items-center justify-between rounded-lg border border-green-100 dark:border-green-800 bg-green-50/50 dark:bg-green-900/10 p-4 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
@@ -409,8 +420,8 @@ export function ModernFinanceDashboard() {
                           >
                             {ingreso.fecha}
                           </Badge>
-                          <Badge className={`text-xs ${getIncomeBadgeColor(ingreso.tipo)}`}>
-                            {ingreso.tipo.toUpperCase()}
+                          <Badge className={`text-xs ${getIncomeBadgeColor(ingreso.tipo || 'general')}`}>
+                            {(ingreso.tipo || 'GENERAL').toUpperCase()}
                           </Badge>
                           <Badge
                             variant="secondary"
@@ -439,7 +450,7 @@ export function ModernFinanceDashboard() {
               </CardHeader>
               <CardContent className="pt-6">
                 <div className="space-y-3">
-                  {gastos.map((gasto, index) => {
+                  {transaccionesRecientes.gastos.map((gasto, index) => {
                     const categoria = categorias.find((c) => c.nombre === gasto.categoria)
                     return (
                       <div
@@ -481,7 +492,7 @@ export function ModernFinanceDashboard() {
         </div>
       </div>
 
-      <NewTransactionDialog open={isNewTransactionOpen} onOpenChange={setIsNewTransactionOpen} />
+      <NewTransactionDialog open={isNewTransactionOpen} onOpenChange={handleTransactionDialogChange} />
     </div>
   )
 }

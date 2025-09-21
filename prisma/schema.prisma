@@ -29,21 +29,19 @@ model User {
 
 model Transaction {
   id          String   @id @default(cuid())
-  type        String   // "ingreso" o "gasto"
   amount      Float
   description String?
   date        DateTime @default(now())
   userId      String
   accountId   String?
-  categoryId  String?
+  categoryId  String   // Ahora es requerido - el tipo se determina por la categoría
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-
 
   // Relaciones
   user User @relation(fields: [userId], references: [id])
   account Account? @relation(fields: [accountId], references: [id])
-  category Category? @relation(fields: [categoryId], references: [id])
+  category Category @relation(fields: [categoryId], references: [id]) // Ahora es requerido
 
   @@map("transactions")
 }
@@ -63,16 +61,29 @@ model Account {
   @@map("accounts")
 }
 
+model Type {
+  id          String   @id @default(cuid())
+  description String   @unique // "INCOME" o "EXPENSE"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones
+  categories Category[]
+
+  @@map("types")
+}
+
 model Category {
   id        String   @id @default(cuid())
   name      String
-  type      String   // "ingreso" o "gasto"
+  typeId    String   // Referencia a la tabla Type
   color     String?  // Color opcional para la categoría
   userId    String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relaciones
+  type         Type          @relation(fields: [typeId], references: [id])
   transactions Transaction[]
 
   @@map("categories")

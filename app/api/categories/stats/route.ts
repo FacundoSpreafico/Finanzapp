@@ -4,12 +4,14 @@ import { prisma } from "@/lib/prisma"
 export async function GET() {
   try {
     const categories = await prisma.category.findMany({
+      where: {
+        type: {
+          description: "EXPENSE"
+        }
+      },
       include: {
-        transactions: {
-          where: {
-            type: "EXPENSE",
-          },
-        },
+        type: true,
+        transactions: true
       },
     })
 

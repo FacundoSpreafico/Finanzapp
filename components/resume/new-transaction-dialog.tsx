@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -16,48 +16,109 @@ interface NewTransactionDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
+interface Account {
+  id: string
+  type: string
+  balance: number
+}
+
 export function NewTransactionDialog({ open, onOpenChange }: NewTransactionDialogProps) {
   const [transactionType, setTransactionType] = useState<"ingreso" | "gasto">("gasto")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [accounts, setAccounts] = useState<Account[]>([])
+  const [loadingAccounts, setLoadingAccounts] = useState(true)
+  const [categories, setCategories] = useState<{id: string, name: string}[]>([])
+  const [loadingCategories, setLoadingCategories] = useState(true)
   const [formData, setFormData] = useState({
-    descripcion: "",
     monto: "",
     categoria: "",
-    medio: "",
+    cuenta: "",
     fecha: new Date().toISOString().split("T")[0],
   })
 
-  const categorias = [
-    "NAFTA",
-    "SALIDAS",
-    "COMIDAS",
-    "SEOM",
-    "COMPRAS",
-    "TARJETA",
-    "IMPUESTO",
-    "CIUDADANIA",
-    "AHORRO",
-    "SALUD",
-    "CASA",
-    "TRANSPORTE",
-    "ENTRETENIMIENTO",
-    "SERVICIOS",
-  ]
+  // Función para cargar las cuentas disponibles
+  const fetchAccounts = async () => {
+    try {
+      setLoadingAccounts(true)
+      const response = await fetch('/api/accounts')
+      
+      if (!response.ok) {
+        throw new Error('Error al cargar cuentas')
+      }
+      
+      const accountsData = await response.json()
+      setAccounts(accountsData)
+    } catch (error) {
+      console.error('Error fetching accounts:', error)
+    } finally {
+      setLoadingAccounts(false)
+    }
+  }
 
-  const tiposIngreso = ["SALARIO", "RENDIMIENTO", "TRANSFERENCIA", "VENTA", "FREELANCE", "BONIFICACION", "OTROS"]
+  // Función para cargar categorías según el tipo de transacción
+  const fetchCategories = async (type: 'EXPENSE' | 'INCOME') => {
+    try {
+      setLoadingCategories(true)
+      const response = await fetch(`/api/categories?type=${type}`)
+      
+      if (!response.ok) {
+        throw new Error('Error al cargar categorías')
+      }
+      
+      const categoriesData = await response.json()
+      setCategories(categoriesData)
+    } catch (error) {
+      console.error('Error fetching categories:', error)
+    } finally {
+      setLoadingCategories(false)
+    }
+  }
 
-  const mediosPago = ["MERCADO PAGO", "EFECTIVO", "TARJETA", "TRANSFERENCIA"]
+  // Cargar datos cuando se abre el diálogo
+  useEffect(() => {
+    if (open) {
+      fetchAccounts()
+      fetchCategories(transactionType === 'gasto' ? 'EXPENSE' : 'INCOME')
+    } else {
+      // Limpiar formulario cuando se cierra el diálogo
+      setFormData({
+        monto: "",
+        categoria: "",
+        cuenta: "",
+        fecha: new Date().toISOString().split("T")[0],
+      })
+      setShowSuccess(false)
+      setIsSubmitting(false)
+    }
+  }, [open])
 
-  const isFormValid = () => {
-    return (
-      formData.descripcion.trim() !== "" &&
-      formData.monto !== "" &&
-      Number.parseFloat(formData.monto) > 0 &&
-      formData.categoria !== "" &&
-      formData.medio !== "" &&
-      formData.fecha !== ""
-    )
+  // Cargar categorías cuando cambia el tipo de transacción
+  useEffect(() => {
+    if (open) {
+      fetchCategories(transactionType === 'gasto' ? 'EXPENSE' : 'INCOME')
+      // Limpiar la categoría seleccionada cuando cambia el tipo
+      setFormData(prev => ({ ...prev, categoria: "" }))
+    }
+  }, [transactionType, open])
+
+  const isFormValid = () => (
+    formData.monto !== "" &&
+    Number.parseFloat(formData.monto) > 0 &&
+    formData.categoria !== "" &&
+    formData.cuenta !== ""
+  )
+
+  // Función helper para obtener el nombre de la categoría
+  const getCategoryName = (categoryId: string) => {
+    const category = categories.find(cat => cat.id === categoryId)
+    return category ? category.name : ''
+  }
+
+  // Función helper para obtener el nombre de la cuenta
+  const getAccountName = (accountId: string) => {
+    const account = accounts.find(acc => acc.id === accountId)
+    return account ? account.type : ''
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -70,10 +131,34 @@ export function NewTransactionDialog({ open, onOpenChange }: NewTransactionDialo
     setIsSubmitting(true)
 
     try {
-      // Simular llamada a API
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      // Generar descripción automática según el tipo
+      const description = transactionType === "ingreso" ? "INCOME" : "EXPENSE"
+      
+      // Preparar datos para la API
+      const transactionData = {
+        description: description,
+        amount: parseFloat(formData.monto),
+        categoryType: transactionType === "ingreso" ? "INCOME" : "EXPENSE",
+        account: formData.cuenta,
+        category: formData.categoria,
+        date: formData.fecha
+      }
 
-      console.log("Nueva transacción:", { ...formData, tipo: transactionType })
+      // Llamar a la API
+      const response = await fetch('/api/transactions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(transactionData),
+      })
+
+      if (!response.ok) {
+        throw new Error('Error al crear la transacción')
+      }
+
+      const result = await response.json()
+      console.log("Transacción creada:", result)
 
       // Mostrar éxito
       setShowSuccess(true)
@@ -81,10 +166,9 @@ export function NewTransactionDialog({ open, onOpenChange }: NewTransactionDialo
       // Resetear formulario después de un delay
       setTimeout(() => {
         setFormData({
-          descripcion: "",
           monto: "",
           categoria: "",
-          medio: "",
+          cuenta: "",
           fecha: new Date().toISOString().split("T")[0],
         })
         setShowSuccess(false)
@@ -94,15 +178,15 @@ export function NewTransactionDialog({ open, onOpenChange }: NewTransactionDialo
     } catch (error) {
       console.error("Error al guardar transacción:", error)
       setIsSubmitting(false)
+      // Aquí podrías mostrar un mensaje de error al usuario
     }
   }
 
   const handleCancel = () => {
     setFormData({
-      descripcion: "",
       monto: "",
       categoria: "",
-      medio: "",
+      cuenta: "",
       fecha: new Date().toISOString().split("T")[0],
     })
     setShowSuccess(false)
@@ -110,18 +194,7 @@ export function NewTransactionDialog({ open, onOpenChange }: NewTransactionDialo
     onOpenChange(false)
   }
 
-  const getMedioIcon = (medio: string) => {
-    switch (medio) {
-      case "MERCADO PAGO":
-        return <CreditCard className="h-4 w-4" />
-      case "EFECTIVO":
-        return <Wallet className="h-4 w-4" />
-      case "TARJETA":
-        return <CreditCard className="h-4 w-4" />
-      default:
-        return <Wallet className="h-4 w-4" />
-    }
-  }
+
 
   if (showSuccess) {
     return (
@@ -184,21 +257,6 @@ export function NewTransactionDialog({ open, onOpenChange }: NewTransactionDialo
             </div>
           </div>
 
-          {/* Descripción */}
-          <div className="space-y-2">
-            <Label htmlFor="descripcion" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-              Descripción *
-            </Label>
-            <Input
-              id="descripcion"
-              placeholder="Ej: Compra en supermercado"
-              value={formData.descripcion}
-              onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-              className="border-2 focus:border-blue-500 transition-colors bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
-              disabled={isSubmitting}
-            />
-          </div>
-
           {/* Monto */}
           <div className="space-y-2">
             <Label htmlFor="monto" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
@@ -239,40 +297,63 @@ export function NewTransactionDialog({ open, onOpenChange }: NewTransactionDialo
               disabled={isSubmitting}
             >
               <SelectTrigger className="border-2 focus:border-blue-500 transition-colors bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100">
-                <SelectValue placeholder={`Selecciona ${transactionType === "gasto" ? "categoría" : "tipo"}`} />
+                <SelectValue placeholder={loadingCategories ? "Cargando categorías..." : `Selecciona ${transactionType === "gasto" ? "categoría" : "tipo"}`} />
               </SelectTrigger>
               <SelectContent className="bg-white dark:bg-slate-800 border dark:border-slate-600">
-                {(transactionType === "gasto" ? categorias : tiposIngreso).map((item) => (
-                  <SelectItem key={item} value={item} className="text-slate-900 dark:text-slate-100">
-                    <Badge variant="outline" className="text-xs">
-                      {item}
-                    </Badge>
+                {loadingCategories ? (
+                  <SelectItem value="loading" disabled>
+                    Cargando categorías...
                   </SelectItem>
-                ))}
+                ) : categories.length === 0 ? (
+                  <SelectItem value="no-categories" disabled>
+                    No hay categorías disponibles
+                  </SelectItem>
+                ) : (
+                  categories.map((category) => (
+                    <SelectItem key={category.id} value={category.id} className="text-slate-900 dark:text-slate-100">
+                      <Badge variant="outline" className="text-xs">
+                        {category.name}
+                      </Badge>
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
           </div>
 
           {/* Medio de Pago */}
           <div className="space-y-2">
-            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Medio de Pago *</Label>
+            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Cuenta *</Label>
             <Select
-              value={formData.medio}
-              onValueChange={(value) => setFormData({ ...formData, medio: value })}
+              value={formData.cuenta}
+              onValueChange={(value) => setFormData({ ...formData, cuenta: value })}
               disabled={isSubmitting}
             >
               <SelectTrigger className="border-2 focus:border-blue-500 transition-colors bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100">
-                <SelectValue placeholder="Selecciona medio de pago" />
+                <SelectValue placeholder={loadingAccounts ? "Cargando cuentas..." : "Selecciona cuenta"} />
               </SelectTrigger>
               <SelectContent className="bg-white dark:bg-slate-800 border dark:border-slate-600">
-                {mediosPago.map((medio) => (
-                  <SelectItem key={medio} value={medio} className="text-slate-900 dark:text-slate-100">
-                    <div className="flex items-center gap-2">
-                      {getMedioIcon(medio)}
-                      <span>{medio}</span>
-                    </div>
+                {loadingAccounts ? (
+                  <SelectItem value="loading" disabled>
+                    Cargando cuentas...
                   </SelectItem>
-                ))}
+                ) : accounts.length === 0 ? (
+                  <SelectItem value="no-accounts" disabled>
+                    No hay cuentas disponibles
+                  </SelectItem>
+                ) : (
+                  accounts.map((account) => (
+                    <SelectItem key={account.id} value={account.id} className="text-slate-900 dark:text-slate-100">
+                      <div className="flex items-center gap-2">
+                        <Wallet className="h-4 w-4" />
+                        <span>{account.type}</span>
+                        <Badge variant="outline" className="ml-auto">
+                          ${account.balance.toLocaleString('es-AR')}
+                        </Badge>
+                      </div>
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -296,23 +377,25 @@ export function NewTransactionDialog({ open, onOpenChange }: NewTransactionDialo
           </div>
 
           {/* Preview mejorado */}
-          {formData.descripcion && formData.monto && Number.parseFloat(formData.monto) > 0 && (
+          {formData.monto && Number.parseFloat(formData.monto) > 0 && (
             <div className="p-4 bg-gradient-to-r from-slate-50 to-blue-50 dark:from-slate-700 dark:to-slate-600 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-500">
               <h4 className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-3 flex items-center gap-2">
                 👁️ Vista Previa:
               </h4>
               <div className="flex items-center justify-between">
                 <div className="space-y-2">
-                  <p className="font-medium text-slate-800 dark:text-slate-200">{formData.descripcion}</p>
+                  <p className="font-medium text-slate-800 dark:text-slate-200">
+                    {transactionType === "ingreso" ? "💰 Ingreso" : "💸 Gasto"}
+                  </p>
                   <div className="flex gap-2 flex-wrap">
                     {formData.categoria && (
                       <Badge variant={transactionType === "gasto" ? "destructive" : "default"} className="text-xs">
-                        {formData.categoria}
+                        {getCategoryName(formData.categoria)}
                       </Badge>
                     )}
-                    {formData.medio && (
+                    {formData.cuenta && (
                       <Badge variant="secondary" className="text-xs">
-                        {formData.medio}
+                        {getAccountName(formData.cuenta)}
                       </Badge>
                     )}
                     <Badge variant="outline" className="text-xs">

@@ -6,12 +6,20 @@ export async function GET() {
     // Get all accounts with their balances
     const accounts = await prisma.account.findMany()
 
-    // Calculate total income and expenses
-    const transactions = await prisma.transaction.findMany()
+    // Calculate total income and expenses using category type
+    const transactions = await prisma.transaction.findMany({
+      include: {
+        category: {
+          include: {
+            type: true
+          }
+        }
+      }
+    })
 
-    const totalIncome = transactions.filter((t) => t.type === "INCOME").reduce((sum, t) => sum + t.amount, 0)
+    const totalIncome = transactions.filter((t) => t.category.type.description === "INCOME").reduce((sum, t) => sum + t.amount, 0)
 
-    const totalExpenses = transactions.filter((t) => t.type === "EXPENSE").reduce((sum, t) => sum + t.amount, 0)
+    const totalExpenses = transactions.filter((t) => t.category.type.description === "EXPENSE").reduce((sum, t) => sum + t.amount, 0)
 
     const totalBalance = accounts.reduce((sum, account) => sum + account.balance, 0)
     const netBalance = totalIncome - totalExpenses

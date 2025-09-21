@@ -2,10 +2,12 @@
 
 import { useState } from "react"
 import { Sidebar } from "./sidebar"
-import { ModernFinanceDashboard } from "./modern-finance-dashboard"
-import { CardsSection } from "./cards-section"
-import { HistorySection } from "./history-section"
-import { ConfigurationSection } from "./configuration-section"
+import { ModernFinanceDashboard } from "./resume/resume-section"
+import { CardsSection } from "./cards/cards-section"
+import { HistorySection } from "./historial/history-section"
+import { ConfigurationSection } from "./configuration/configuration-section"
+import { CategoriesSection } from "./category/categories-section"
+import { AccountsSection } from "./accounts/accounts-section"
 
 const MenuIcon = () => (
   <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -21,6 +23,10 @@ export function FinanceLayout() {
     switch (activeSection) {
       case "resumen":
         return <ModernFinanceDashboard />
+      case "categorias":
+        return <CategoriesSection />
+      case "cuentas":
+        return <AccountsSection />
       case "tarjetas":
         return <CardsSection />
       case "historial":

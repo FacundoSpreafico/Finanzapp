@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { getDefaultUserId } from "@/lib/default-user"
 
 export async function GET() {
   try {
@@ -23,48 +24,43 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { description, amount, type, account, category, date } = body
+    const { description, amount, account, category, categoryType, date } = body
 
-    // Find or create account
-    let accountRecord = await prisma.account.findFirst({
-      where: { type: account.toUpperCase() },
+    // Get default user ID
+    const userId = await getDefaultUserId()
+
+    // Find account by ID
+    let accountRecord = await prisma.account.findUnique({
+      where: { 
+        id: account
+      },
     })
 
     if (!accountRecord) {
-      accountRecord = await prisma.account.create({
-        data: {
-          name: account,
-          type: account.toUpperCase(),
-          balance: 0,
-        },
-      })
+      return NextResponse.json({ error: "Account not found" }, { status: 404 })
     }
 
-    // Find or create category
-    let categoryRecord = null
-    if (category) {
-      categoryRecord = await prisma.category.findFirst({
-        where: { name: category.toUpperCase() },
-      })
-
-      if (!categoryRecord) {
-        categoryRecord = await prisma.category.create({
-          data: {
-            name: category.toUpperCase(),
-          },
-        })
+    // Find category by ID (required)
+    const categoryRecord = await prisma.category.findUnique({
+      where: { id: category },
+      include: {
+        type: true
       }
+    })
+
+    if (!categoryRecord) {
+      return NextResponse.json({ error: "Category not found" }, { status: 404 })
     }
 
-    // Create transaction
+    // Create transaction (sin campo type, se determina por categoría)
     const transaction = await prisma.transaction.create({
       data: {
         description,
         amount,
-        type: type.toUpperCase(),
         date: new Date(date),
+        userId: userId,
         accountId: accountRecord.id,
-        categoryId: categoryRecord?.id,
+        categoryId: categoryRecord.id, // Ahora es requerido
       },
       include: {
         account: true,
@@ -72,8 +68,8 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Update account balance
-    const balanceChange = type === "INCOME" ? amount : -amount
+    // Update account balance - usar el tipo de la categoría
+    const balanceChange = categoryRecord.type?.description === "INCOME" ? amount : -amount
     await prisma.account.update({
       where: { id: accountRecord.id },
       data: {

@@ -7,6 +7,11 @@ export async function GET() {
     const transactions = await prisma.transaction.findMany({
       include: {
         account: true,
+        category: {
+          include: {
+            type: true
+          }
+        }
       },
       orderBy: {
         date: "asc",
@@ -25,14 +30,17 @@ export async function GET() {
 
     // Process transactions chronologically
     transactions.forEach((transaction) => {
-      const change = transaction.type === "INCOME" ? transaction.amount : -transaction.amount
-      balanceHistory[transaction.accountId] += change
+      if (transaction.accountId && transaction.account) {
+        const isIncome = transaction.category?.type?.description === "INCOME"
+        const change = isIncome ? transaction.amount : -transaction.amount
+        balanceHistory[transaction.accountId] += change
 
-      historyData.push({
-        date: transaction.date.toISOString().split("T")[0],
-        balance: balanceHistory[transaction.accountId],
-        account: transaction.account.name,
-      })
+        historyData.push({
+          date: transaction.date.toISOString().split("T")[0],
+          balance: balanceHistory[transaction.accountId],
+          account: transaction.account.type,
+        })
+      }
     })
 
     // Group by date and sum all account balances
