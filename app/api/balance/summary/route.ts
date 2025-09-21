@@ -45,7 +45,7 @@ export async function GET() {
       return {
         id: account.id,
         type: account.type,
-        balance: ingresos - gastos, // Balance calculado solo por transacciones
+        balance: account.balance, // Balance real de la DB (incluye balance inicial)
         initialBalance: initialBalance, // Saldo inicial calculado (para referencia)
         ingresos: ingresos,
         gastos: gastos
@@ -61,8 +61,8 @@ export async function GET() {
       .filter(t => t.category?.type?.description === "EXPENSE")
       .reduce((sum, t) => sum + t.amount, 0)
     
-    // El saldo total debería ser solo ingresos - gastos (sin balance inicial)
-    const saldoTotal = totalIngresos - totalGastos
+    // El saldo total es la suma de todos los balances reales de las cuentas
+    const saldoTotal = accounts.reduce((sum, account) => sum + account.balance, 0)
     
     // Para compatibilidad, calcular saldo inicial total real
     const totalInitialBalance = accountBalances.reduce((sum, acc) => sum + acc.initialBalance, 0)
@@ -137,7 +137,7 @@ export async function GET() {
           id: 'total',
           type: 'Balance Total', 
           balance: saldoTotal,
-          initialBalance: 0, // El total no tiene balance inicial
+          initialBalance: totalInitialBalance,
           ingresos: totalIngresos,
           gastos: totalGastos
         }
