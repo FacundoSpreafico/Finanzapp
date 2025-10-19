@@ -7,7 +7,9 @@
     "dev": "next dev",
     "lint": "next lint",
     "start": "next start",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "db:clear": "tsx scripts/clear-database.ts",
+    "db:reset": "npm run db:clear && npm run db:seed"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
