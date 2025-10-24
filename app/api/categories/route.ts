@@ -8,11 +8,14 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const categoryType = searchParams.get('type') || 'EXPENSE'
     
+    // Normalizar el tipo a mayúsculas
+    const normalizedType = categoryType.toUpperCase()
+    
     // Obtener categorías según el tipo solicitado
     const categories = await prisma.category.findMany({
       where: {
         type: {
-          description: categoryType // Puede ser "EXPENSE" o "INCOME"
+          description: normalizedType // "EXPENSE" o "INCOME"
         }
       },
       include: {
@@ -57,20 +60,61 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { name, color, typeDescription = "EXPENSE" } = body
 
+    // Validar campos requeridos
+    if (!name || !color) {
+      return NextResponse.json(
+        { error: "Los campos 'name' y 'color' son requeridos" }, 
+        { status: 400 }
+      )
+    }
+
+    // Normalizar el tipo a mayúsculas
+    const normalizedType = typeDescription.toUpperCase()
+
+    // Obtener el userId del usuario por defecto
+    const userId = await getDefaultUserId()
+
     // Buscar el tipo correspondiente
     const type = await prisma.type.findFirst({
-      where: { description: typeDescription }
+      where: { 
+        description: normalizedType
+      }
     })
 
     if (!type) {
-      return NextResponse.json({ error: "Tipo no encontrado" }, { status: 400 })
+      // Log para debug
+      console.error(`Tipo no encontrado: ${normalizedType}`)
+      const availableTypes = await prisma.type.findMany()
+      console.log('Tipos disponibles:', availableTypes)
+      
+      return NextResponse.json({ 
+        error: `Tipo no encontrado: ${normalizedType}`,
+        availableTypes: availableTypes.map(t => t.description)
+      }, { status: 400 })
+    }
+
+    // Verificar si ya existe una categoría con el mismo nombre para este usuario
+    const existingCategory = await prisma.category.findFirst({
+      where: {
+        name: name.toUpperCase(),
+        userId: userId,
+        typeId: type.id
+      }
+    })
+
+    if (existingCategory) {
+      return NextResponse.json(
+        { error: "Ya existe una categoría con este nombre" }, 
+        { status: 409 }
+      )
     }
 
     const category = await prisma.category.create({
       data: {
         name: name.toUpperCase(),
         color,
-        typeId: type.id
+        typeId: type.id,
+        userId: userId
       },
       include: {
         type: true
@@ -80,6 +124,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(category, { status: 201 })
   } catch (error) {
     console.error("Error creating category:", error)
-    return NextResponse.json({ error: "Error creating category" }, { status: 500 })
+    return NextResponse.json(
+      { 
+        error: "Error creating category",
+        details: error instanceof Error ? error.message : "Unknown error"
+      }, 
+      { status: 500 }
+    )
   }
 }

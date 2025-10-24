@@ -281,7 +281,7 @@ export function ModernFinanceDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">${balanceData.saldoTotal.toLocaleString()}</div>
-              <p className="text-xs opacity-90">Total disponible</p>
+              <p className="text-xs opacity-90 select-none cursor-default">Total disponible</p>
             </CardContent>
           </Card>
 
@@ -300,7 +300,7 @@ export function ModernFinanceDashboard() {
                   <div className={`text-3xl font-bold ${colorClass}`}>
                     ${account.balance.toLocaleString()}
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 select-none cursor-default">
                     Ingresos: ${account.ingresos.toLocaleString()} | Gastos: ${account.gastos.toLocaleString()}
                   </p>
                 </CardContent>
@@ -325,8 +325,8 @@ export function ModernFinanceDashboard() {
               <div className="space-y-3">
                 {accounts.map((account) => (
                   <div key={`income-${account.id}`} className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                    <span className="text-sm font-medium text-green-700 dark:text-green-400">{account.type}</span>
-                    <span className="font-bold text-green-600 dark:text-green-400">
+                    <span className="text-sm font-medium text-green-700 dark:text-green-400 select-none cursor-default">{account.type}</span>
+                    <span className="font-bold text-green-600 dark:text-green-400 select-none cursor-default">
                       ${account.ingresos.toLocaleString()}
                     </span>
                   </div>
@@ -349,8 +349,8 @@ export function ModernFinanceDashboard() {
               <div className="space-y-3">
                 {accounts.map((account) => (
                   <div key={`expense-${account.id}`} className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                    <span className="text-sm font-medium text-red-700 dark:text-red-400">{account.type}</span>
-                    <span className="font-bold text-red-600 dark:text-red-400">
+                    <span className="text-sm font-medium text-red-700 dark:text-red-400 select-none cursor-default">{account.type}</span>
+                    <span className="font-bold text-red-600 dark:text-red-400 select-none cursor-default">
                       ${account.gastos.toLocaleString()}
                     </span>
                   </div>
@@ -378,11 +378,11 @@ export function ModernFinanceDashboard() {
                         <div className={`p-2 rounded-full ${categoria.color}`}>
                           <IconComponent />
                         </div>
-                        <span className={`text-sm font-semibold ${categoria.textColor} dark:text-slate-300`}>
+                        <span className={`text-sm font-semibold ${categoria.textColor} dark:text-slate-300 select-none cursor-default`}>
                           {categoria.nombre}
                         </span>
                       </div>
-                      <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                      <span className="text-sm font-bold text-slate-700 dark:text-slate-200 select-none cursor-default">
                         ${categoria.monto.toLocaleString()}
                       </span>
                     </div>
@@ -410,7 +410,7 @@ export function ModernFinanceDashboard() {
                       className="flex items-center justify-between rounded-lg border border-green-100 dark:border-green-800 bg-green-50/50 dark:bg-green-900/10 p-4 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
                     >
                       <div className="space-y-2">
-                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 select-none cursor-default">
                           {ingreso.descripcion}
                         </p>
                         <div className="flex items-center gap-2">
@@ -431,7 +431,7 @@ export function ModernFinanceDashboard() {
                           </Badge>
                         </div>
                       </div>
-                      <span className="font-bold text-green-600 dark:text-green-400 text-lg">
+                      <span className="font-bold text-green-600 dark:text-green-400 text-lg select-none cursor-default">
                         +${ingreso.monto.toLocaleString()}
                       </span>
                     </div>
@@ -458,7 +458,7 @@ export function ModernFinanceDashboard() {
                         className="flex items-center justify-between rounded-lg border border-red-100 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10 p-4 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                       >
                         <div className="space-y-2">
-                          <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                          <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 select-none cursor-default">
                             {gasto.descripcion}
                           </p>
                           <div className="flex items-center gap-2">
@@ -479,7 +479,7 @@ export function ModernFinanceDashboard() {
                             </Badge>
                           </div>
                         </div>
-                        <span className="font-bold text-red-600 dark:text-red-400 text-lg">
+                        <span className="font-bold text-red-600 dark:text-red-400 text-lg select-none cursor-default">
                           -${gasto.monto.toLocaleString()}
                         </span>
                       </div>
